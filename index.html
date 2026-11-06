@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>錄音轉文字筆記</title>
+<style>
+  :root{
+    --bg:#FBF7F1; --ink:#2E2A26; --soft:#6b6259; --line:#e4dcd0;
+    --accent:#5E8B7E; --accent-d:#4a6f64; --warm:#C9A15A; --alert:#a34a2a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;line-height:1.8;font-size:16px;padding-bottom:70px}
+  h1,h2,h3{font-family:"Noto Serif TC","Songti TC",serif}
+  header{text-align:center;padding:48px 20px 28px;background:linear-gradient(180deg,#fff,var(--bg));border-bottom:1px solid var(--line)}
+  header .eyebrow{letter-spacing:.3em;font-size:12px;color:var(--soft);margin-bottom:12px}
+  header h1{font-size:clamp(26px,5.5vw,38px);font-weight:900;margin-bottom:10px}
+  header p{color:var(--soft);font-size:14.5px;max-width:520px;margin:0 auto}
+  main{max-width:820px;margin:0 auto;padding:0 18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin-top:22px}
+  .step{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .step .n{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+  .step h2{font-size:19px}
+  label{display:block;font-size:14px;font-weight:700;margin:12px 0 6px}
+  input[type=password],input[type=text],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 13px;font-size:16px;font-family:inherit;background:#fffdfa;color:var(--ink)}
+  textarea{resize:vertical}
+  .hint{font-size:12.5px;color:var(--soft);margin-top:6px}
+  .hint a{color:var(--accent-d)}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:200px}
+  .check{display:flex;align-items:center;gap:8px;font-size:14px;margin-top:10px;font-weight:400}
+  .check input{width:18px;height:18px}
+  .drop{border:2px dashed #cdbf9f;border-radius:14px;background:#fffdf7;text-align:center;padding:30px 16px;cursor:pointer;transition:.15s}
+  .drop.over{background:#f6f0df;border-color:var(--warm)}
+  .drop .big{font-size:34px}
+  .drop b{display:block;font-size:16.5px;margin:6px 0 2px}
+  .drop span{font-size:13px;color:var(--soft)}
+  .fileinfo{margin-top:12px;font-size:14px;color:var(--accent-d);font-weight:700;word-break:break-all}
+  audio{width:100%;margin-top:12px}
+  button{font-family:inherit;font-size:16px;cursor:pointer}
+  .btn{background:var(--accent);color:#fff;border:0;border-radius:12px;padding:13px 22px;font-weight:700}
+  .btn:hover{background:var(--accent-d)}
+  .btn:disabled{background:#b9c8c2;cursor:not-allowed}
+  .btn.ghost{background:#fff;color:var(--accent-d);border:1px solid #cfe0d9;padding:9px 16px;font-size:14px;font-weight:500}
+  .btn.ghost:hover{background:#eef3f0}
+  .btn.big{width:100%;margin-top:18px;font-size:18px;padding:15px}
+  .progress{margin-top:16px;display:none}
+  .bar{height:10px;background:#efe9dd;border-radius:100px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--warm),var(--accent));transition:width .3s}
+  .status{font-size:14px;color:var(--soft);margin-top:8px}
+  .error{display:none;margin-top:14px;background:#FBF1EC;border:1px solid #e8c4b3;color:var(--alert);border-radius:12px;padding:12px 14px;font-size:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{background:#f3efe8;border:0;border-radius:100px;padding:8px 18px;font-size:14.5px;color:var(--soft)}
+  .tab.on{background:var(--accent);color:#fff;font-weight:700}
+  .pane{display:none}.pane.on{display:block}
+  .tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  #transcript{min-height:320px;line-height:1.9}
+  .sum h3{font-size:16.5px;margin:20px 0 8px;padding-left:10px;border-left:4px solid var(--warm)}
+  .sum h3:first-child{margin-top:0}
+  .sum .title{font-size:21px;font-weight:700;border:0;padding:0;margin:0 0 10px}
+  .sum p{font-size:15.5px}
+  .sum ul{margin-left:22px}
+  .sum li{margin-bottom:5px;font-size:15.5px}
+  .sum .kw{display:flex;flex-wrap:wrap;gap:6px}
+  .sum .kw span{background:#f3efe8;border-radius:100px;padding:3px 12px;font-size:13.5px;color:var(--soft)}
+  .sum .warn{background:#FBF1EC;border-radius:10px;padding:10px 14px}
+  .sum .warn li{color:#7a4530}
+  .sum .topic{margin-bottom:12px}
+  .sum .topic b{font-size:15.5px}
+  .privacy{margin-top:22px;font-size:12.5px;color:var(--soft);background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .privacy b{color:var(--ink)}
+  .empty{color:var(--soft);font-size:14.5px;text-align:center;padding:26px 0}
+  #player2{position:sticky;top:0;z-index:2;background:#fff;margin:0 0 10px}
+  .prow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f1ebe0}
+  .ptime{flex:none;background:#eef3f0;color:var(--accent-d);border:1px solid #d7e3dd;border-radius:100px;padding:4px 12px;font-size:13px;margin-top:2px}
+  .ptime:hover{background:#e2ebe6}
+  .ptext{flex:1;font-size:16px;line-height:1.85;outline:none;border-radius:8px;padding:2px 6px}
+  .ptext:focus{background:#fffdf3;box-shadow:0 0 0 2px #efe3bd}
+  @media print{header,.card:not(#resultCard),.tools,.tabs,.privacy{display:none!important}.pane{display:block!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">錄音 → 文字 → 筆記</div>
+  <h1>錄音轉文字筆記</h1>
+  <p>放進錄音檔，自動辨識成逐字稿，再整理成重點摘要與分段筆記，可直接複製或下載。</p>
+</header>
+
+<main>
+
+  <!-- 步驟 1 -->
+  <div class="card">
+    <div class="step"><div class="n">1</div><h2>貼上 OpenAI 金鑰（只需設定一次）</h2></div>
+    <label for="key">OpenAI API Key</label>
+    <input type="password" id="key" placeholder="sk-..." autocomplete="off">
+    <label class="check"><input type="checkbox" id="remember" checked> 記住在這台電腦（下次不用再貼）</label>
+    <div class="hint">還沒有金鑰？到 <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a> 建立，並先儲值少量金額。辨識費用大約每分鐘 0.006 美元，一支 30 分鐘錄音約 0.2 美元（台幣數元）。金鑰只存在這個瀏覽器，不會傳到別的地方。</div>
+  </div>
+
+  <!-- 步驟 2 -->
+  <div class="card">
+    <div class="step"><div class="n">2</div><h2>選擇錄音檔</h2></div>
+    <div class="drop" id="drop">
+      <div class="big">🎙</div>
+      <b>點這裡選檔案，或把檔案拖進來</b>
+      <span>支援 mp3、m4a、wav、mp4、webm、ogg 等常見格式</span>
+    </div>
+    <input type="file" id="file" accept="audio/*,video/mp4,video/webm,.m4a,.mp3,.wav,.ogg,.mp4,.webm,.aac,.flac" hidden>
+    <div class="fileinfo" id="fileinfo"></div>
+    <audio id="player" controls style="display:none"></audio>
+
+    <div class="row">
+      <div>
+        <label for="lang">錄音語言</label>
+        <select id="lang">
+          <option value="zh" selected>中文（國語）</option>
+          <option value="en">英文</option>
+          <option value="ja">日文</option>
+          <option value="auto">自動偵測</option>
+        </select>
+      </div>
+      <div>
+        <label for="style">輸出字體</label>
+        <select id="style">
+          <option value="tw" selected>繁體中文</option>
+          <option value="raw">不指定（模型預設）</option>
+        </select>
+      </div>
+    </div>
+    <label for="vocab">專有名詞／人名提示（選填，可提高準確度）</label>
+    <input type="text" id="vocab" placeholder="例如：王小明、麗山國小、自律神經、HRV">
+
+    <button class="btn big" id="go" disabled>開始辨識並整理</button>
+
+    <div class="progress" id="progress">
+      <div class="bar"><i id="barfill"></i></div>
+      <div class="status" id="status"></div>
+    </div>
+    <div class="error" id="error"></div>
+  </div>
+
+  <!-- 已有逐字稿：直接貼上 -->
+  <div class="card">
+    <div class="step"><div class="n">＋</div><h2>已經有逐字稿？直接貼上整理</h2></div>
+    <textarea id="pasteBox" rows="5" placeholder="把逐字稿文字貼在這裡（例如用雅婷等其他軟體轉出來的文字）"></textarea>
+    <button class="btn ghost" id="pasteGo" style="margin-top:12px">整理成筆記與摘要</button>
+    <div class="hint">這個功能不需要錄音檔，但整理摘要仍會用到步驟 1 的金鑰。</div>
+  </div>
+
+  <!-- 結果 -->
+  <div class="card" id="resultCard">
+    <div class="step"><div class="n">3</div><h2>結果</h2></div>
+    <div class="tabs">
+      <button class="tab on" data-pane="sumPane">重點摘要與筆記</button>
+      <button class="tab" data-pane="proofPane">邊聽邊校對</button>
+      <button class="tab" data-pane="txPane">逐字稿</button>
+    </div>
+
+    <div class="pane on" id="sumPane">
+      <div class="tools">
+        <button class="btn ghost" id="copySum" disabled>複製摘要</button>
+        <button class="btn ghost" id="regen" disabled>重新整理摘要</button>
+      </div>
+      <div class="sum" id="sumBox"><div class="empty">辨識完成後，摘要會出現在這裡。</div></div>
+    </div>
+
+    <div class="pane" id="proofPane">
+      <audio id="player2" controls style="display:none"></audio>
+      <div class="hint" style="margin:0 0 8px">點左邊的時間，錄音會跳到那一句並開始播放；文字可以直接點進去修改錯字。校對請擇一在這裡或「逐字稿」分頁修改，避免互相覆蓋。</div>
+      <div id="proof"><div class="empty">辨識完成後，這裡可以邊聽邊校對。</div></div>
+    </div>
+
+    <div class="pane" id="txPane">
+      <div class="tools">
+        <label class="check" style="margin:0"><input type="checkbox" id="ts"> 顯示時間標記</label>
+        <button class="btn ghost" id="copyTx" disabled>複製逐字稿</button>
+      </div>
+      <textarea id="transcript" placeholder="辨識完成後，逐字稿會出現在這裡，可以直接修改錯字。"></textarea>
+      <div class="hint">錯字可以直接在上面修改；改完後按「重新整理摘要」，摘要就會依照修改後的內容重做。若已在這個分頁直接修改，再切換「時間標記」會覆蓋這裡的修改，系統會先詢問。</div>
+    </div>
+
+    <div class="tools" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+      <button class="btn ghost" id="dlTxt" disabled>下載 .txt</button>
+      <button class="btn ghost" id="dlDoc" disabled>下載 Word 檔</button>
+      <button class="btn ghost" id="print" disabled>列印／存成 PDF</button>
+    </div>
+  </div>
+
+  <div class="privacy">
+    <b>隱私與保密提醒：</b>錄音檔會由這個瀏覽器直接傳到 OpenAI 進行辨識與整理，不會經過其他伺服器。若錄音內含客戶的機密或個資，請先確認客戶是否同意使用雲端 AI 服務。辨識結果可能有錯字或同音字，正式交件前請務必對照錄音校對。
+  </div>
+
+</main>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var state = { file:null, segments:[], paras:[], summary:null, txEdited:false };
+
+  function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+  /* ---------- 金鑰 ---------- */
+  var savedKey = lsGet('asr_key');
+  if(savedKey){ $('key').value = savedKey; }
+  $('key').addEventListener('input', refreshGo);
+
+  /* ---------- 選檔 ---------- */
+  var drop = $('drop'), fileEl = $('file');
+  drop.addEventListener('click', function(){ fileEl.click(); });
+  ['dragenter','dragover'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave','drop'].forEach(function(ev){
+    drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function(e){
+    if(e.dataTransfer.files && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+  });
+  fileEl.addEventListener('change', function(){ if(fileEl.files[0]) setFile(fileEl.files[0]); });
+
+  function fmtSize(b){ return b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.ceil(b/1024)+' KB'; }
+  function setFile(f){
+    state.file = f;
+    $('fileinfo').textContent = '已選擇：' + f.name + '（' + fmtSize(f.size) + '）';
+    var p = $('player');
+    try{
+      var u = URL.createObjectURL(f);
+      p.src = u; p.style.display = 'block';
+      var p2 = $('player2'); p2.src = u; p2.style.display = 'block';
+    }catch(e){}
+    refreshGo();
+  }
+  function refreshGo(){ $('go').disabled = !(state.file && $('key').value.trim().length > 10); }
+
+  /* ---------- 進度與錯誤 ---------- */
+  function showProgress(pct, msg){
+    $('progress').style.display = 'block';
+    $('barfill').style.width = Math.max(0,Math.min(100,pct)) + '%';
+    $('status').textContent = msg;
+  }
+  function showError(msg){ var e = $('error'); e.style.display = 'block'; e.textContent = msg; }
+  function clearError(){ $('error').style.display = 'none'; }
+
+  function friendlyError(status, body){
+    var m = (body && body.error && body.error.message) || '';
+    if(status === 401) return '金鑰不正確或已失效，請回到步驟 1 重新貼上。';
+    if(status === 429) return '帳戶額度不足或請求太頻繁。請到 OpenAI 帳戶確認餘額，稍等一下再試。' + (m ? '（'+m+'）' : '');
+    if(status === 413) return '檔案太大，請換較小的檔案再試。';
+    if(status === 400) return '這個檔案格式或內容無法辨識。' + (m ? '（'+m+'）' : '');
+    return '發生錯誤（代碼 ' + status + '）。' + m;
+  }
+
+  /* ---------- 音訊切段（檔案超過 24MB 時使用） ---------- */
+  function encodeWav(samples, rate){
+    var buf = new ArrayBuffer(44 + samples.length*2), v = new DataView(buf);
+    function w(o,s){ for(var i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); }
+    w(0,'RIFF'); v.setUint32(4, 36+samples.length*2, true); w(8,'WAVE'); w(12,'fmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,rate,true); v.setUint32(28,rate*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true);
+    w(36,'data'); v.setUint32(40, samples.length*2, true);
+    var off = 44;
+    for(var i=0;i<samples.length;i++,off+=2){
+      var s = Math.max(-1, Math.min(1, samples[i]));
+      v.setInt16(off, s<0 ? s*0x8000 : s*0x7FFF, true);
+    }
+    return new Blob([v], {type:'audio/wav'});
+  }
+
+  async function splitAudio(file, chunkSec){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = new AC();
+    var audio = await ctx.decodeAudioData(await file.arrayBuffer());
+    try{ ctx.close(); }catch(e){}
+    var rate = 16000;
+    var off = new OfflineAudioContext(1, Math.ceil(audio.duration*rate), rate);
+    var src = off.createBufferSource();
+    src.buffer = audio; src.connect(off.destination); src.start();
+    var data = (await off.startRendering()).getChannelData(0);
+    var size = chunkSec*rate, out = [];
+    for(var i=0, k=0; i<data.length; i+=size, k++){
+      out.push({ blob: encodeWav(data.subarray(i, Math.min(i+size, data.length)), rate), offset: k*chunkSec, name: 'part'+(k+1)+'.wav' });
+    }
+    return out;
+  }
+
+  /* ---------- 語音辨識 ---------- */
+  function buildPrompt(){
+    var p = '';
+    if($('style').value === 'tw') p += '以下是繁體中文的逐字稿，使用台灣慣用的詞彙與標點符號。';
+    var v = $('vocab').value.trim();
+    if(v) p += '相關名詞：' + v + '。';
+    return p;
+  }
+
+  async function transcribe(blob, name, offset, key){
+    var fd = new FormData();
+    fd.append('file', blob, name);
+    fd.append('model', 'whisper-1');
+    fd.append('response_format', 'verbose_json');
+    var lang = $('lang').value;
+    if(lang !== 'auto') fd.append('language', lang);
+    var pr = buildPrompt();
+    if(pr) fd.append('prompt', pr);
+    var r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method:'POST', headers:{ 'Authorization':'Bearer '+key }, body: fd
+    });
+    if(!r.ok){
+      var body = null; try{ body = await r.json(); }catch(e){}
+      throw new Error(friendlyError(r.status, body));
+    }
+    var j = await r.json();
+    var segs = (j.segments && j.segments.length) ? j.segments : [{ start:0, end:j.duration||0, text:j.text||'' }];
+    return segs.map(function(s){ return { start:s.start+offset, end:s.end+offset, text:String(s.text||'').trim() }; })
+               .filter(function(s){ return s.text; });
+  }
+
+  /* ---------- 逐字稿排版 ---------- */
+  function mmss(sec){
+    sec = Math.floor(sec); var m = Math.floor(sec/60), s = sec%60;
+    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  }
+  function writeTranscript(){
+    var withTs = $('ts').checked;
+    $('transcript').value = state.paras.map(function(p){
+      return (withTs ? '['+mmss(p.start)+'] ' : '') + p.text;
+    }).join('\n\n');
+    state.txEdited = false;
+  }
+  function renderTranscript(){
+    var paras = [], cur = null, prevEnd = 0;
+    state.segments.forEach(function(s){
+      var gap = s.start - prevEnd;
+      if(!cur || gap > 1.6 || cur.text.length > 110){
+        cur = { start:s.start, text:'' }; paras.push(cur);
+      }
+      cur.text += (cur.text && /[A-Za-z0-9]$/.test(cur.text) ? ' ' : '') + s.text;
+      prevEnd = s.end;
+    });
+    state.paras = paras;
+    writeTranscript();
+    renderProof();
+  }
+  function renderProof(){
+    var box = $('proof'); box.innerHTML = '';
+    if(!state.paras.length){
+      box.innerHTML = '<div class="empty">辨識完成後，這裡可以邊聽邊校對。（貼上文字的模式沒有時間標記，請到「逐字稿」分頁修改。）</div>';
+      return;
+    }
+    state.paras.forEach(function(p){
+      var row = document.createElement('div'); row.className = 'prow';
+      var b = document.createElement('button'); b.className = 'ptime'; b.textContent = '▶ ' + mmss(p.start);
+      b.addEventListener('click', function(){
+        var a = $('player2');
+        try{ a.currentTime = p.start; a.play(); }catch(e){}
+      });
+      var t = document.createElement('div'); t.className = 'ptext';
+      t.contentEditable = 'true'; t.textContent = p.text;
+      t.addEventListener('input', function(){ p.text = t.innerText; writeTranscript(); });
+      row.appendChild(b); row.appendChild(t); box.appendChild(row);
+    });
+  }
+  $('transcript').addEventListener('input', function(){ state.txEdited = true; });
+  $('ts').addEventListener('change', function(){
+    if(!state.paras.length) return;
+    if(state.txEdited && !confirm('切換時間標記會覆蓋在「逐字稿」分頁直接修改的內容，要繼續嗎？')){
+      $('ts').checked = !$('ts').checked; return;
+    }
+    writeTranscript();
+  });
+
+  /* ---------- 直接貼上逐字稿 ---------- */
+  $('pasteGo').addEventListener('click', async function(){
+    clearError();
+    var key = $('key').value.trim(), text = $('pasteBox').value.trim();
+    if(key.length <= 10){ showError('請先在步驟 1 貼上 OpenAI 金鑰。'); return; }
+    if(text.length < 20){ showError('請先貼上要整理的逐字稿文字。'); return; }
+    if($('remember').checked) lsSet('asr_key', key);
+    state.segments = []; state.paras = []; state.summary = null;
+    $('transcript').value = text; state.txEdited = false;
+    renderProof(); setResultButtons(true);
+    document.getElementById('resultCard').scrollIntoView({ behavior:'smooth' });
+    await summarize();
+  });
+
+  /* ---------- 摘要與筆記 ---------- */
+  var SYS = '你是專業的逐字稿整理助理。請用繁體中文（台灣慣用語）整理使用者提供的逐字稿。' +
+    '只能依據逐字稿內容，不可編造沒有出現的資訊；人名、數字、日期務必照原文。' +
+    '輸出必須是 JSON，欄位如下：' +
+    '{"title":"一句話標題","summary":"3到5句的整體摘要","key_points":["最重要的重點，5到8點"],' +
+    '"notes":[{"heading":"主題小標","points":["該主題的條列筆記"]}],' +
+    '"action_items":["待辦事項或需要跟進的事，沒有則為空陣列"],' +
+    '"keywords":["關鍵詞，最多10個"],' +
+    '"unclear":["聽起來不清楚、可能辨識錯誤、需要對照錄音確認的地方，沒有則為空陣列"]}';
+
+  async function summarize(){
+    var key = $('key').value.trim(), text = $('transcript').value.trim();
+    if(!text){ return; }
+    $('regen').disabled = true;
+    $('sumBox').innerHTML = '<div class="empty">正在整理重點與筆記…</div>';
+    try{
+      var r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method:'POST',
+        headers:{ 'Authorization':'Bearer '+key, 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          model:'gpt-4o-mini', temperature:0.2,
+          response_format:{ type:'json_object' },
+          messages:[{ role:'system', content:SYS }, { role:'user', content:'逐字稿如下：\n\n'+text }]
+        })
+      });
+      if(!r.ok){
+        var body = null; try{ body = await r.json(); }catch(e){}
+        throw new Error(friendlyError(r.status, body));
+      }
+      var j = await r.json();
+      state.summary = JSON.parse(j.choices[0].message.content);
+      renderSummary();
+    }catch(err){
+      $('sumBox').innerHTML = '<div class="empty">摘要整理失敗：' + esc(err.message || String(err)) + '<br>逐字稿已保留，可按「重新整理摘要」再試一次。</div>';
+    }
+    $('regen').disabled = false;
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function list(arr){
+    return '<ul>' + arr.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('') + '</ul>';
+  }
+  function renderSummary(){
+    var s = state.summary || {}, h = '';
+    h += '<h3 class="title">' + esc(s.title || '錄音重點') + '</h3>';
+    if(s.summary) h += '<h3>整體摘要</h3><p>' + esc(s.summary) + '</p>';
+    if(s.key_points && s.key_points.length) h += '<h3>重點整理</h3>' + list(s.key_points);
+    if(s.notes && s.notes.length){
+      h += '<h3>分段筆記</h3>';
+      s.notes.forEach(function(n){
+        h += '<div class="topic"><b>' + esc(n.heading || '') + '</b>' + list(n.points || []) + '</div>';
+      });
+    }
+    if(s.action_items && s.action_items.length) h += '<h3>待辦事項</h3>' + list(s.action_items);
+    if(s.keywords && s.keywords.length) h += '<h3>關鍵詞</h3><div class="kw">' + s.keywords.map(function(k){ return '<span>'+esc(k)+'</span>'; }).join('') + '</div>';
+    if(s.unclear && s.unclear.length) h += '<h3>需要對照錄音確認</h3><div class="warn">' + list(s.unclear) + '</div>';
+    $('sumBox').innerHTML = h;
+  }
+  function summaryText(){
+    var s = state.summary; if(!s) return '';
+    var o = [];
+    function sec(t, arr){ if(arr && arr.length) o.push('【'+t+'】\n' + arr.map(function(x){ return '・'+x; }).join('\n')); }
+    o.push(s.title || '錄音重點');
+    if(s.summary) o.push('【整體摘要】\n' + s.summary);
+    sec('重點整理', s.key_points);
+    (s.notes || []).forEach(function(n){ sec(n.heading || '筆記', n.points); });
+    sec('待辦事項', s.action_items);
+    if(s.keywords && s.keywords.length) o.push('【關鍵詞】' + s.keywords.join('、'));
+    sec('需要對照錄音確認', s.unclear);
+    return o.join('\n\n');
+  }
+
+  /* ---------- 主流程 ---------- */
+  $('go').addEventListener('click', async function(){
+    clearError();
+    var key = $('key').value.trim(), f = state.file;
+    if(!f) return;
+    if($('remember').checked) lsSet('asr_key', key); else lsDel('asr_key');
+    $('go').disabled = true;
+    state.segments = []; state.summary = null;
+    $('transcript').value = '';
+    $('sumBox').innerHTML = '<div class="empty">辨識中，完成後會自動整理摘要。</div>';
+    setResultButtons(false);
+
+    try{
+      var parts;
+      if(f.size <= 24*1024*1024){
+        parts = [{ blob:f, offset:0, name:f.name }];
+      }else{
+        showProgress(5, '檔案較大，正在切成小段（需要一點時間，請不要關閉頁面）…');
+        parts = await splitAudio(f, 480);
+      }
+      for(var i=0;i<parts.length;i++){
+        showProgress(10 + (80*i/parts.length), '正在辨識語音… 第 '+(i+1)+' / '+parts.length+' 段');
+        var segs = await transcribe(parts[i].blob, parts[i].name, parts[i].offset, key);
+        state.segments = state.segments.concat(segs);
+      }
+      if(!state.segments.length) throw new Error('沒有辨識到任何內容，請確認錄音是否有聲音、語言是否選對。');
+      renderTranscript();
+      setResultButtons(true);
+      showProgress(92, '辨識完成，正在整理重點與筆記…');
+      document.getElementById('resultCard').scrollIntoView({ behavior:'smooth' });
+      await summarize();
+      showProgress(100, '完成！可以複製、下載，或切到「逐字稿」校對錯字。');
+    }catch(err){
+      var msg = err && err.message ? err.message : String(err);
+      if(/Failed to fetch|NetworkError|Load failed/i.test(msg)){
+        msg = '無法連到 OpenAI。請確認網路正常；若是在受限制的環境（例如某些預覽視窗）打開，請改下載成檔案後用 Chrome 或 Safari 直接開啟。';
+      }
+      showError(msg);
+      $('progress').style.display = 'none';
+    }
+    refreshGo();
+  });
+
+  function setResultButtons(on){
+    ['copySum','copyTx','regen','dlTxt','dlDoc','print'].forEach(function(id){ $(id).disabled = !on; });
+  }
+  $('regen').addEventListener('click', summarize);
+
+  /* ---------- 分頁 ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(t){
+    t.addEventListener('click', function(){
+      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function(x){ x.classList.remove('on'); });
+      Array.prototype.forEach.call(document.querySelectorAll('.pane'), function(x){ x.classList.remove('on'); });
+      t.classList.add('on'); $(t.dataset.pane).classList.add('on');
+    });
+  });
+
+  /* ---------- 複製與下載 ---------- */
+  function copy(text, btn){
+    function done(){ var o = btn.textContent; btn.textContent = '已複製 ✓'; setTimeout(function(){ btn.textContent = o; }, 1500); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    }else fallback();
+    function fallback(){
+      var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t);
+      t.select(); try{ document.execCommand('copy'); done(); }catch(e){} document.body.removeChild(t);
+    }
+  }
+  $('copySum').addEventListener('click', function(){ copy(summaryText(), this); });
+  $('copyTx').addEventListener('click', function(){ copy($('transcript').value, this); });
+
+  function fullText(){
+    var base = (state.file ? state.file.name.replace(/\.[^.]+$/, '') : '錄音');
+    return base + '\n\n' + (summaryText() ? summaryText() + '\n\n————————\n【逐字稿】\n\n' : '') + $('transcript').value;
+  }
+  function download(name, mime, content){
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff'+content], {type:mime+';charset=utf-8'}));
+    a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function baseName(){ return state.file ? state.file.name.replace(/\.[^.]+$/, '') : '錄音筆記'; }
+  $('dlTxt').addEventListener('click', function(){ download(baseName()+'_逐字稿與摘要.txt', 'text/plain', fullText()); });
+  $('dlDoc').addEventListener('click', function(){
+    var html = '<html><head><meta charset="utf-8"></head><body style="font-family:Microsoft JhengHei,sans-serif;line-height:1.8">' +
+      '<h1>' + esc(baseName()) + '</h1>' +
+      (state.summary ? $('sumBox').innerHTML : '') +
+      '<hr><h2>逐字稿</h2>' + esc($('transcript').value).replace(/\n/g,'<br>') + '</body></html>';
+    download(baseName()+'_逐字稿與摘要.doc', 'application/msword', html);
+  });
+  $('print').addEventListener('click', function(){
+    document.querySelectorAll('.pane').forEach(function(p){ p.classList.add('on'); });
+    window.print();
+  });
+})();
+</script>
+</body>
+</html>
